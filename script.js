@@ -1,62 +1,127 @@
-// Путь к файлу (динамический, меняется для каждой игры)
-const FILE_PATH = "/Fl-Studio26.1-ProducerEdition/26.1.1";
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. Получаем ключ игры из URL (?3q или ?game=3q)
+    const urlParams = new URLSearchParams(window.location.search);
+    let gameKey = urlParams.get('game');
+    if (!gameKey) {
+        gameKey = Array.from(urlParams.keys())[0];
+    }
 
-// Собираем полную ссылку из конфига и пути
-const FULL_DOWNLOAD_URL = BASE_DOWNLOAD_URL + FILE_PATH;
+    // 2. Достаем данные игры
+    const currentGame = GAMES_DATABASE[gameKey] || GAMES_DATABASE["default"];
+    const FULL_DOWNLOAD_URL = BASE_DOWNLOAD_URL.replace(/\/$/, '') + (currentGame.filePath || '');
 
-document.getElementById('download-trigger').addEventListener('click', function() {
-    const btn = this;
-    const progContainer = document.getElementById('progress-container');
-    const bar = document.getElementById('bar-fill');
-    const percent = document.getElementById('percent-val');
-    const status = document.getElementById('status-msg');
+    // 3. Подставляем текстовые данные
+    const titleElem = document.getElementById('game-title');
+    const statusElem = document.getElementById('game-status');
+    const osElem = document.getElementById('game-os');
+    const archElem = document.getElementById('game-arch');
+    const modalTitleElem = document.getElementById('modal-game-title');
 
-    // Скрываем кнопку, показываем прогресс
-    btn.style.display = 'none';
-    progContainer.style.display = 'block';
+    if (titleElem) titleElem.textContent = `Download ${currentGame.title}`;
+    if (statusElem) statusElem.textContent = currentGame.status || "Ready to Deploy";
+    if (osElem) osElem.textContent = currentGame.os || "Windows 10 / 11 (64-bit)";
+    if (archElem) archElem.textContent = currentGame.arch || "Recommended System Config";
+    if (modalTitleElem) modalTitleElem.textContent = `${currentGame.title} Ready`;
 
-    let progress = 0;
-    const interval = setInterval(() => {
-        progress += Math.random() * 4;
+    // 4. Логика подстановки ЛОГОТИПА
+    const logoImg = document.getElementById('game-logo');
+    const defaultIcon = document.getElementById('game-default-icon');
 
-        if (progress >= 100) {
-            progress = 100;
-            clearInterval(interval);
+    if (currentGame.logo && logoImg) {
+        logoImg.src = currentGame.logo;
+        logoImg.classList.remove('hidden');
+        if (defaultIcon) defaultIcon.classList.add('hidden');
+    } else {
+        if (logoImg) logoImg.classList.add('hidden');
+        if (defaultIcon) defaultIcon.classList.remove('hidden');
+    }
 
-            status.innerText = "SUCCESSFULLY SYNCHRONIZED";
+    // 5. Логика отображения ЕДИНОГО СКРИНШОТА
+    const screenshotSection = document.getElementById('screenshot-section');
+    const screenshotImg = document.getElementById('screenshot-img');
 
-            // Через 1 секунду показываем модальное окно
-            setTimeout(() => {
-                document.getElementById('download-modal').style.display = 'flex';
-            }, 1000);
-        }
+    if (currentGame.screenshot && screenshotImg) {
+        screenshotImg.src = currentGame.screenshot;
+        if (screenshotSection) screenshotSection.classList.remove('hidden');
+    } else if (screenshotSection) {
+        screenshotSection.classList.add('hidden');
+    }
 
-        bar.style.width = progress + '%';
-        percent.innerText = Math.floor(progress) + '%';
+    // 6. Логика рендеринга ОСОБЕННОСТЕЙ (FEATURES)
+    const featuresSection = document.getElementById('features-section');
+    const featuresList = document.getElementById('features-list');
 
-        if(progress > 30) status.innerText = "Reifying Shell...";
-        if(progress > 70) status.innerText = "Finalizing Devout Link...";
-    }, 100);
-});
+    if (currentGame.features && currentGame.features.length > 0 && featuresList) {
+        featuresList.innerHTML = ''; // Очищаем контейнер
 
-// Обработка кнопки скачивания в модальном окне
-document.getElementById('final-download-btn').addEventListener('click', function() {
-    // Открываем ссылку в новой вкладке
-    window.open(FULL_DOWNLOAD_URL, '_blank');
+        currentGame.features.forEach((featureText) => {
+            const item = document.createElement('div');
+            item.className = 'flex items-center gap-2.5 p-3 rounded-xl bg-white/5 border border-white/5 text-xs text-gray-200';
+            item.innerHTML = `
+                <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>${featureText}</span>
+            `;
+            featuresList.appendChild(item);
+        });
 
-    // Закрываем модальное окно
-    document.getElementById('download-modal').style.display = 'none';
+        if (featuresSection) featuresSection.classList.remove('hidden');
+    } else if (featuresSection) {
+        if (featuresSection) featuresSection.classList.add('hidden');
+    }
 
-    // Обнуляем прогресс-бар
-    const progContainer = document.getElementById('progress-container');
-    const bar = document.getElementById('bar-fill');
-    const percent = document.getElementById('percent-val');
-    const status = document.getElementById('status-msg');
+    // 7. Обработка скачивания и модального окна
     const btn = document.getElementById('download-trigger');
+    const progContainer = document.getElementById('progress-container');
+    const bar = document.getElementById('bar-fill');
+    const percent = document.getElementById('percent-val');
+    const status = document.getElementById('status-msg');
+    const modal = document.getElementById('download-modal');
+    const finalBtn = document.getElementById('final-download-btn');
 
-    progContainer.style.display = 'none';
-    bar.style.width = '0%';
-    percent.innerText = '0%';
-    status.innerText = 'Fragmenting Data...';
-    btn.style.display = 'inline-block';
+    if (btn) {
+        btn.addEventListener('click', function() {
+            btn.style.display = 'none';
+            if (progContainer) progContainer.style.display = 'block';
+
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 4;
+
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    if (status) status.innerText = "SUCCESSFULLY SYNCHRONIZED";
+
+                    setTimeout(() => {
+                        if (modal) modal.classList.remove('hidden');
+                    }, 1000);
+                }
+
+                if (bar) bar.style.width = progress + '%';
+                if (percent) percent.innerText = Math.floor(progress) + '%';
+
+                if (status) {
+                    if (progress > 30 && progress <= 70) {
+                        status.innerText = "Reifying Shell...";
+                    } else if (progress > 70 && progress < 100) {
+                        status.innerText = "Finalizing Devout Link...";
+                    }
+                }
+            }, 100);
+        });
+    }
+
+    if (finalBtn) {
+        finalBtn.addEventListener('click', function() {
+            window.open(FULL_DOWNLOAD_URL, '_blank');
+            if (modal) modal.classList.add('hidden');
+            if (progContainer) progContainer.style.display = 'none';
+            if (bar) bar.style.width = '0%';
+            if (percent) percent.innerText = '0%';
+            if (status) status.innerText = 'Initializing...';
+            if (btn) btn.style.display = 'flex';
+        });
+    }
 });
